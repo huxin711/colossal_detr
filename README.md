@@ -20,7 +20,7 @@ pip install .
 $ DATA=/path/to/data/ python -m torch.distributed.launch --nproc_per_node=nproc_per_node
                                                          --master_addr MASTER_ADDR
                                                          --master_port MASTER_PORT
-                                                         train_engine.py
+                                                         run_train.py
                                                          --config=CONFIG_FILE
                                                          --world_size=WORLD_SIZE
                                                          --rank=RANK
