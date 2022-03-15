@@ -32,7 +32,7 @@ class Transformer(nn.Module):
 
         memory = self.encoder(src, pos_embed)  # [N,B,256]
 
-        hs = self.decoder(tgt, memory, query_embed)
+        hs = self.decoder(tgt, memory, pos_embed, query_embed)
 
 
         return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
@@ -80,13 +80,13 @@ class TransformerDecoder(nn.Module):
         self.norm = col_nn.LayerNorm(d_model)
         self.return_intermediate = return_intermediate
 
-    def forward(self, tgt, memory, query_pos):  # src,pos:[hw,B,256] mask:[B,hw]
-        tgt = tgt if query_pos is None else (tgt + query_pos)
+    def forward(self, tgt, memory, pos, query_pos):  # src,pos:[hw,B,256] mask:[B,hw]
+        # tgt = tgt if query_pos is None else (tgt + query_pos)
 
         intermediate = []
 
         for i in range(self.de_layers):
-            tgt = self.layers[i](tgt, memory, query_pos).transpose(0, 1)
+            tgt = self.layers[i](tgt, memory, pos, query_pos).transpose(0, 1)
 
             if self.return_intermediate:
                 intermediate.append(self.norm(tgt))
@@ -110,14 +110,14 @@ class TransformerDecoderLayer(nn.Module):
 
         self.ff = FeedForward(d_model, dim_feedforward, dropout)
 
-    def forward(self, tgt, memory, query_pos):
+    def forward(self, tgt, memory, pos, query_pos):
         memory = memory.transpose(0, 1)
-        tgt = tgt if query_pos is None else (tgt + query_pos)
-        tgt = tgt.transpose(0, 1)
-        x2 = self.norm1(tgt)
-        tgt = tgt + self.dropout1(self.self_attn_1(x2, x2, x2))
+        tgt1 = tgt if query_pos is None else (tgt + query_pos)
+        tgt1 = tgt1.transpose(0, 1)
+        x2 = self.norm1(tgt1)
+        tgt = tgt + self.dropout1(self.self_attn_1(x2, x2, tgt))
         x2 = self.norm2(tgt)
-        tgt = tgt + self.dropout2(self.self_attn_2(x2, memory, memory))
+        tgt = tgt + self.dropout2(self.self_attn_2(x2+query_pos, memory+pos, memory))
         x2 = self.norm3(tgt)
         tgt = tgt + self.dropout3(self.ff(x2))
         return tgt
