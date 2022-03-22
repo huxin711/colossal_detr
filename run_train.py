@@ -102,15 +102,23 @@ def train_detr():
             eval_loss = sum(loss_dict_reduced_scaled.values())
             class_error = loss_dict_reduced['class_error']
 
-
-
             orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
             results = postprocessors['bbox'](outputs, orig_target_sizes)
             res = {target['image_id'].item(): output for target, output in zip(targets, results)}
+
+
+
             if coco_evaluator is not None:
                 coco_evaluator.update(res)
+        if coco_evaluator is not None:
+            coco_evaluator.synchronize_between_processes()
+        if coco_evaluator is not None:
+            coco_evaluator.accumulate()
+            coco_evaluator.summarize()
 
-        logger.info(f"Epoch {epoch} - eval loss: {eval_loss} - class error: {class_error}", ranks=[0])
+        the_APs = coco_evaluator.coco_eval['bbox'].stats.tolist()
+
+        logger.info(f"Epoch {epoch} - eval loss: {eval_loss} - the_APs: {the_APs}", ranks=[0])
 
 
 if __name__ == '__main__':
